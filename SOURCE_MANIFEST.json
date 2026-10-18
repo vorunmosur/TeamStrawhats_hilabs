@@ -1,0 +1,23 @@
+{
+  "files": {
+    "hackathon_train.csv": {
+      "bytes": 4048756,
+      "sha256": "9884eb6963facbd79e97044cfd36ee500720437101ad6583255dfc8cd2f8dba2"
+    },
+    "termmap_folds.csv": {
+      "bytes": 172933,
+      "sha256": "93002cc6069f34640b7048a70e063cc14e73d5084a81a6af169e354d9a4b604d"
+    },
+    "icd10cm_codes.xlsx": {
+      "bytes": 3581785,
+      "sha256": "60a91dffd515b77c8c7da0bddfd7b18540421bd445e11bdef129573ad90cd2cd"
+    },
+    "SNOMEDCT_US_codes_and_descriptions.xlsx": {
+      "bytes": 27854996,
+      "sha256": "7cd4ea3c94bcdeff9634628e50c665d02c424a4585e3971acfb34bcb7db6e719"
+    }
+  },
+  "retained_rows": 9644,
+  "entity_hash": "845350f70cad58ab",
+  "fold_sha256_prefix": "93002cc6069f3464"
+}

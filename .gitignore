@@ -1,0 +1,16 @@
+artifacts/
+assets/
+work/
+__pycache__/
+*.pyc
+.env
+*.csv
+*.xlsx
+*.bin
+*.npy
+*.npz
+*.parquet
+*.joblib
+*.safetensors
+*.zip
+*.mp4
