@@ -8,6 +8,7 @@ Complete supplied-fold validation: **ICD-10-CM 47.87%, SNOMED CT US 38.71%; head
 
 - [Public weights and model card](https://huggingface.co/Vorun/strawhats-termmap)
 - [Submission report](https://huggingface.co/Vorun/strawhats-termmap/resolve/main/TermMap_Submission_Report.pdf)
+- [2:30 silent demo walkthrough](https://huggingface.co/Vorun/strawhats-termmap/resolve/main/TermMap_Demo.mp4) uses actual captured application screens.
 - Validation details: `docs/VALIDATION_REPORT.json`.
 
 The public 1,799,429,897-byte archive SHA-256 is `306e7fa53c32122e66d8b0a7ab7736af0955757decde73b748cff45b522e2eb1`. It contains frozen encoder/index weights, trained rankers and hashed support-example keys. It excludes raw clinical notes and organizer dictionary tables. Download `termmap_model_weights.zip` from the model repository without an API key.
@@ -76,6 +77,8 @@ The runtime manifest and model hashes are checked before mapping. Interrupted re
 - No synthetic data is used by the final retrieval track. Earlier partial Qwen generation and stopped LoRA training are documented as abandoned measured experiments; they are not completed model components.
 - Native Kaggle runtime used Python 3.13.15, torch 2.11.0+cu128, transformers 5.16.1, numpy 2.1.3, pandas 2.3.3, scipy 1.16.3, scikit-learn 1.6.1, pyarrow 23.0.1, huggingface-hub 1.29.0 and safetensors 0.8.0. Preserve the final resolved runtime lock with model artifacts.
 
-## Submission handoff
+## Demo and submission status
 
-Required: completed runtime artifact, validation/error report, documentation PDF, a 2-3 minute demo video, private repository with authorized judge access, and predictions on the organizer's evaluation file. No evaluation file, working submission destination, repository URL or judge account list has been provided in this workspace yet. The final handoff must distinguish prepared local artifacts from external actions actually completed.
+Run python -m genlink.demo_server --artifacts artifacts/runtime and open http://127.0.0.1:8765. The demo uses the real local engine.
+
+The submission form is prepared but must not be sent without the team POC's final confirmation. The repository remains private until submission, then must be made public for the organizers. No hidden evaluation file was supplied.
