@@ -1,0 +1,56 @@
+{
+  "ICD10CM": {
+    "rows": 2304,
+    "accuracy": 0.4787326388888889,
+    "top20_accuracy": 0.8684895833333334,
+    "hybrid_candidate_recall": 0.8394097222222222,
+    "augmented_candidate_recall": 0.9418402777777778,
+    "rare_seen_rows": 1118,
+    "rare_seen_accuracy": 0.6037567084078712,
+    "unseen_code_rows": 642,
+    "unseen_code_accuracy": 0.1261682242990654,
+    "dense_accuracy": 0.3298611111111111,
+    "lexical_accuracy": 0.19835069444444445,
+    "rrf_accuracy": 0.23741319444444445,
+    "fold_accuracy": {
+      "0": 0.49326805385556916,
+      "1": 0.4712950600801068,
+      "2": 0.470189701897019
+    }
+  },
+  "SNOMEDCT_US": {
+    "rows": 7340,
+    "accuracy": 0.3870572207084469,
+    "top20_accuracy": 0.6886920980926431,
+    "hybrid_candidate_recall": 0.87574931880109,
+    "augmented_candidate_recall": 0.87574931880109,
+    "rare_seen_rows": 3272,
+    "rare_seen_accuracy": 0.38814180929095354,
+    "unseen_code_rows": 3666,
+    "unseen_code_accuracy": 0.39088925259138024,
+    "dense_accuracy": 0.3870572207084469,
+    "lexical_accuracy": 0.2821525885558583,
+    "rrf_accuracy": 0.296866485013624,
+    "fold_accuracy": {
+      "0": 0.3999165971643036,
+      "1": 0.3759124087591241,
+      "2": 0.385702746365105
+    }
+  },
+  "headline_min_accuracy": 0.3870572207084469,
+  "meets_95_percent": false,
+  "evaluation": "Supplied fixed-fold out-of-fold validation; no official hidden evaluation file was available.",
+  "method_selection": {
+    "ICD10CM": {
+      "mode": "ranker",
+      "ranker_accuracy": 0.4787326388888889,
+      "dense_accuracy": 0.3298611111111111
+    },
+    "SNOMEDCT_US": {
+      "mode": "dense",
+      "ranker_accuracy": 0.3640326975476839,
+      "dense_accuracy": 0.3870572207084469
+    }
+  },
+  "selection_caveat": "The same complete OOF comparison selected dense versus learned ranking per system. This is model-selection validation, not an untouched hidden test."
+}

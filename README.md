@@ -2,11 +2,15 @@
 
 Offline clinical term mapping to the supplied ICD-10-CM and SNOMED CT US dictionaries.
 
-## Current build status
+## Measured result and deliverables
 
-The complete catalogue and query embeddings have been generated on private Kaggle T4 GPUs. Full hybrid retrieval and fixed-fold context ranking are in progress. A completed model, final validation accuracy and a 95% result are **not yet claimed**. The validation report and runtime bundle are required before this package is submission-ready.
+Complete supplied-fold validation: **ICD-10-CM 47.87%, SNOMED CT US 38.71%; headline 38.71%. The 95% target is not met.** All 9,644 retained labels are counted. ICD uses the learned ranker; SNOMED uses the stronger dense baseline. The same OOF comparison selected these methods; this is model-selection validation, not an untouched hidden test.
 
-This is the user-approved deadline architecture. Historical generative and supervised experiments are preserved in `EXPERIMENT_HISTORY.md` and their measured reports; their incomplete adapters are not used by this engine.
+- [Public weights and model card](https://huggingface.co/Vorun/strawhats-termmap)
+- [Submission report](https://huggingface.co/Vorun/strawhats-termmap/resolve/main/TermMap_Submission_Report.pdf)
+- Validation details: `docs/VALIDATION_REPORT.json`.
+
+The public 1,799,429,897-byte archive SHA-256 is `306e7fa53c32122e66d8b0a7ab7736af0955757decde73b748cff45b522e2eb1`. It contains frozen encoder/index weights, trained rankers and hashed support-example keys. It excludes raw clinical notes and organizer dictionary tables. Download `termmap_model_weights.zip` from the model repository without an API key.
 
 ## Method
 
@@ -20,9 +24,15 @@ The complete index covers **480,306 concepts**, **775,013 unique readable normal
 
 ## Reproduce offline prediction
 
-The final runtime bundle must be extracted to `artifacts/runtime`, with directories `prepared`, `embeddings`, `lexical`, `models`, and `encoder`. The bundle contains proprietary resources and must remain private.
+Use Python 3.13. Prepare the original dictionary tables in a separate setup environment with **pandas==3.0.1, pyarrow==21.0.0, openpyxl==3.1.5**; these versions reproduce their pinned Parquet bytes. Keep the original two XLSX files in `organizer-data/`.
 
-Use the recorded Python/package environment in the bundle. Install dependencies and cache resources during setup; prediction has no network dependency. Install the source package with `python -m pip install --no-deps -e .`.
+```sh
+python -m venv .setup
+.setup/bin/python -m pip install pandas==3.0.1 pyarrow==21.0.0 openpyxl==3.1.5
+.setup/bin/python -m genlink.setup_runtime --weights termmap_model_weights.zip --source organizer-data --output artifacts/runtime
+```
+
+On Windows use `.setup/Scripts/python.exe`. Then use a separate inference environment with `requirements-retrieval.txt` and install this source with `python -m pip install --no-deps -e .`. Cache dependencies during setup; inference is offline and verifies all resource/source hashes.
 
 ```sh
 termmap predict --artifacts artifacts/runtime --input input.csv --output predictions.csv
@@ -34,7 +44,7 @@ Equivalent source invocation:
 python -m genlink.retrieval_cli predict --artifacts artifacts/runtime --input input.csv --output predictions.csv
 ```
 
-Input columns: `entity,chunk_text`. `clinical_entity` is accepted as an alias for `entity`. If context is provided separately, use input `chunk_id,clinical_entity` and add `--chunks chunks.csv`; the lookup must contain one `chunk_text` per `chunk_id`. Identifiers are read as strings, preserving leading zeros. Missing context is rejected rather than invented; an explicit empty `chunk_text` is accepted.
+Input columns: `entity,chunk_text`. `clinical_entity` is accepted as an alias for `entity`. If context is provided separately, use input `chunk_id,clinical_entity` and add `--chunks chunks.csv`; the lookup must contain one `chunk_text` per `chunk_id`. Identifiers are read as strings, preserving leading zeros. For entity-only input add `--contextless`; an explicit empty `chunk_text` is also accepted.
 
 Output preserves all input columns and row order and appends `icd10cm_code,snomed_code`. Codes remain strings. The separate `predictions_debug.jsonl` contains top-20 candidates, matched aliases, ranking scores and margins. `predictions.metrics.json` reports runtime and output SHA-256. Existing prediction output files are not overwritten. Both systems always receive a legal dictionary code; there is no abstention used to raise measured accuracy.
 
@@ -61,7 +71,7 @@ The runtime manifest and model hashes are checked before mapping. Interrupted re
 ## Resources, licensing and privacy
 
 - Encoder: `cambridgeltl/SapBERT-from-PubMedBERT-fulltext`, revision `090663c3ae57bf35ffe4d0d468a2a88d03051a4d`. The official model card lists Apache-2.0 and describes UMLS 2020AA training provenance. Model source and file hashes are retained in `MODEL_SOURCE.json`. [Model card](https://huggingface.co/cambridgeltl/SapBERT-from-PubMedBERT-fulltext), [paper](https://aclanthology.org/2021.naacl-main.334/).
-- Dictionaries, folds and clinical examples are the organizer-supplied proprietary resources. No public redistribution is performed. Keep source data, indices, memory, debug text and bundles private and grant only authorized judges access.
+- Dictionaries, folds and clinical examples are the organizer-supplied proprietary resources. No public redistribution is performed. Raw clinical notes, supplied dictionary tables and debug text remain private. Public model state uses hashed example keys and numeric support vectors; authorized evaluators reconstruct dictionary metadata from their supplied XLSX files.
 - Clinical data and code were uploaded to explicitly authorized **private Kaggle datasets and a private notebook**, using T4 x2. Internet was enabled only to install/cache public dependencies and pinned public models, then disabled for clinical processing. No remote model inference API was used.
 - No synthetic data is used by the final retrieval track. Earlier partial Qwen generation and stopped LoRA training are documented as abandoned measured experiments; they are not completed model components.
 - Native Kaggle runtime used Python 3.13.15, torch 2.11.0+cu128, transformers 5.16.1, numpy 2.1.3, pandas 2.3.3, scipy 1.16.3, scikit-learn 1.6.1, pyarrow 23.0.1, huggingface-hub 1.29.0 and safetensors 0.8.0. Preserve the final resolved runtime lock with model artifacts.

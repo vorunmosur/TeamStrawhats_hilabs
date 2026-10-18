@@ -30,6 +30,8 @@ def main():
     p.add_argument('--deadline',required=True);p.add_argument('--passes',type=int,default=2)
     a=p.parse_args();base=a.base;project=base/'termmap-genlink';runtime=base/'termmap-runtime';models=base/'retrieval-models-v2'
     if json.loads((models/'RANKER_RESULT.json').read_text())['status']!='complete':raise ValueError('All fold and final models required')
+    from .select_deployment import select
+    selected_report=select(models,base/'retrieval-candidates',project/'artifacts/retrieval/prepared')
     early=base/'termmap_validation_private.zip'
     with zipfile.ZipFile(early,'w',compression=zipfile.ZIP_DEFLATED) as z:
         for f in models.iterdir():
@@ -55,8 +57,17 @@ def main():
         copy_file(base/'retrieval-embeddings'/name,runtime/'embeddings'/name)
     for name in ['char_tfidf.npz','char_vectorizer.joblib','LEXICAL_MANIFEST.json']:
         copy_file(base/'retrieval-lexical'/name,runtime/'lexical'/name)
-    for name in ['ICD10CM_final_ranker.joblib','SNOMEDCT_US_final_ranker.joblib','RANKER_LOCK.json','RANKER_RESULT.json','VALIDATION_REPORT.json']:
+    for name in ['ICD10CM_final_ranker.joblib','SNOMEDCT_US_final_ranker.joblib','RANKER_LOCK.json']:
         copy_file(models/name,runtime/'models'/name)
+    # Reports are separate copies so finalized training provenance remains intact.
+    (runtime/'models/VALIDATION_REPORT.json').write_text(json.dumps(selected_report,indent=2)+'\n')
+    training_result=json.loads((models/'RANKER_RESULT.json').read_text())
+    training_result['ranker_headline_min_accuracy']=training_result['headline_min_accuracy']
+    training_result['headline_min_accuracy']=selected_report['headline_min_accuracy']
+    training_result['method_selection']=selected_report['method_selection']
+    (runtime/'models/RANKER_RESULT.json').write_text(json.dumps(training_result,indent=2)+'\n')
+    copy_file(models/'VALIDATION_REPORT.json',runtime/'models/RANKER_VALIDATION_REPORT.json')
+    copy_file(models/'DEPLOYMENT_SELECTION.json',runtime/'models/DEPLOYMENT_SELECTION.json')
     encoder=Path('/kaggle/temp/termmap-sapbert');source=json.loads((encoder/'MODEL_SOURCE.json').read_text())
     for name in list(source['files'])+['MODEL_SOURCE.json']:copy_file(encoder/name,runtime/'encoder'/name)
     packages=['torch','transformers','numpy','pandas','scipy','scikit-learn','pyarrow','huggingface-hub','safetensors','joblib','threadpoolctl']

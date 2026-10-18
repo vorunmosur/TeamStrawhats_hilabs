@@ -69,11 +69,15 @@ class MappingEngine:
         self.index=HybridRetriever(self.root/'prepared',self.root/'embeddings',self.root/'lexical',device=self.device)
         self.queries=pd.read_parquet(self.root/'prepared/queries.parquet')
         self.rows=labelled_rows(self.root/'prepared/rows.parquet')
-        self.vectors=np.load(self.root/'embeddings/queries.npy',mmap_mode='r').reshape(-1,2,768)
+        self.raw_vectors=np.load(self.root/'embeddings/queries.npy',mmap_mode='r').reshape(-1,2,768)
+        self.vectors=np.array(self.raw_vectors,dtype=np.float32,copy=True)
+        self.vectors/=np.maximum(np.linalg.norm(self.vectors,axis=2,keepdims=True),1e-12)
         self.hashed_memory='context_key_sha256' in self.queries.columns
         self.known={r.context_key_sha256:int(r.query_id) for r in self.queries.itertuples(index=False)} if self.hashed_memory else {(r.term_norm,r.context_norm):int(r.query_id) for r in self.queries.itertuples(index=False)}
         memory_class=DeploymentMemory if self.hashed_memory else TrainingMemory
         self.memories={s:memory_class(self.rows,self.queries,self.vectors,s,self.index.details) for s in SYSTEMS}
+        selection=self.root/'models/DEPLOYMENT_SELECTION.json'
+        self.selection=json.loads(selection.read_text()) if selection.exists() else {s:dict(mode='ranker') for s in SYSTEMS}
         self.models={}
         for s in SYSTEMS:
             path=self.root/f'models/{s}_final_ranker.joblib'
@@ -90,20 +94,24 @@ class MappingEngine:
         query=pd.Series(dict(term_norm=term,context_norm=context))
         if query_id is None or self.force_reencode:
             if self.encoder is None:self.encoder=QueryEncoder(self.root/'encoder',self.device)
-            vectors=np.stack([self.encoder.encode(term),self.encoder.encode(term if not context else term+' [SEP] '+context)])
-        else:vectors=np.asarray(self.vectors[query_id],dtype=np.float32)
-        vectors=vectors/np.maximum(np.linalg.norm(vectors,axis=1,keepdims=True),1e-12)
+            raw_vectors=np.stack([self.encoder.encode(term),self.encoder.encode(term if not context else term+' [SEP] '+context)])
+        else:raw_vectors=np.asarray(self.raw_vectors[query_id],dtype=np.float32)
+        vectors=raw_vectors/np.maximum(np.linalg.norm(raw_vectors,axis=1,keepdims=True),1e-12)
         output={}
         for system in SYSTEMS:
-            base=self.candidate_cache.get(query_id,system) if self.candidate_cache is not None and query_id is not None else self.index.candidates(system,term,context,*vectors)
-            codes,matrix,aliases=assemble(self.index,self.memories[system],query,vectors,base)
-            scores=self.models[system].predict_proba(matrix)[:,1];order=ordering(codes,scores)
+            base=self.candidate_cache.get(query_id,system) if self.candidate_cache is not None and query_id is not None else self.index.candidates(system,term,context,*raw_vectors)
+            if self.selection[system]['mode']=='dense':
+                codes,matrix,aliases=base;scores=matrix[:,0]
+            else:
+                codes,matrix,aliases=assemble(self.index,self.memories[system],query,vectors,base)
+                scores=self.models[system].predict_proba(matrix)[:,1]
+            order=ordering(codes,scores)
             top=[]
             for i in order[:20]:
                 i=int(i);code=codes[i]
                 if (system,code) not in self.index.details:raise ValueError('Illegal output code')
                 top.append(dict(code=code,name=self.index.details[(system,code)]['name'],matched_alias=self.index.names[int(aliases[i])],ranking_score=float(scores[i])))
-            output[system]=dict(code=top[0]['code'],ranking_score=top[0]['ranking_score'],
+            output[system]=dict(method=self.selection[system]['mode'],code=top[0]['code'],ranking_score=top[0]['ranking_score'],
                 score_margin=top[0]['ranking_score']-top[1]['ranking_score'],top20=top)
         self.output_cache[key]=output
         return output

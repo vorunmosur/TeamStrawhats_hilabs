@@ -1,0 +1,45 @@
+{
+  "status": "complete",
+  "deterministic": true,
+  "fresh_input_integration": {
+    "inputs": 10,
+    "independent_fresh_runs": 2,
+    "sha256": "ced96e86033a72331a95052ed99bfb39ffbe9dbc20ac3d26170c9aa5dc053407",
+    "deterministic": true,
+    "scope": "Contextless variants excluded from the known-query cache; integration test, not an accuracy benchmark."
+  },
+  "full_passes": [
+    {
+      "run": 1,
+      "rows": 7522,
+      "both_systems": true,
+      "legal_codes": true,
+      "sha256": "6ec8cfdfb4132d006221d27069475a818798636c9f8212b0e28e19909470f87b",
+      "median_seconds": 0.0583417340003507,
+      "p95_seconds": 0.06934026234939665,
+      "independently_reencoded_inputs": false,
+      "independently_retrieved_candidates": false,
+      "full_frozen_candidate_cache": true
+    },
+    {
+      "run": 2,
+      "rows": 7522,
+      "both_systems": true,
+      "legal_codes": true,
+      "sha256": "6ec8cfdfb4132d006221d27069475a818798636c9f8212b0e28e19909470f87b",
+      "median_seconds": 0.05957176799984154,
+      "p95_seconds": 0.07108052625039818,
+      "independently_reencoded_inputs": false,
+      "independently_retrieved_candidates": false,
+      "full_frozen_candidate_cache": true
+    }
+  ],
+  "all_inputs": 7522,
+  "runtime": {
+    "file": "termmap_runtime_private.zip",
+    "bytes": 1837733825,
+    "sha256": "ae70ec46cb3a29bd6b9df461039b4bf0f96e6ec98c149e21a24f4222d5071532",
+    "runtime_manifest_sha256": "6cb3282ccc0f7deed8ed72518412ae124a5883af4102f295a4c43cd77f7e5d86"
+  },
+  "caveat": "All-input final-ranking repeatability with complete frozen label-free candidates. Not independent retrieval/encoder repeatability, not validation accuracy. OOF report is separate. Cached latency is not fresh-input latency."
+}
