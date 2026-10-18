@@ -4,6 +4,8 @@ Offline clinical term mapping to the supplied ICD-10-CM and SNOMED CT US diction
 
 ## Measured result and deliverables
 
+Frozen Hugging Face release revision: `55e4ba2a87595576c0ac2e421f234348ef0181e4`. Pass this as `revision` to `hf_hub_download` to retrieve the exact evaluated release.
+
 Complete supplied-fold validation: **ICD-10-CM 47.87%, SNOMED CT US 38.71%; headline 38.71%. The 95% target is not met.** All 9,644 retained labels are counted. ICD uses the learned ranker; SNOMED uses the stronger dense baseline. The same OOF comparison selected these methods; this is model-selection validation, not an untouched hidden test.
 
 - [Public weights and model card](https://huggingface.co/Vorun/strawhats-termmap)
