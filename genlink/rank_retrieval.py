@@ -126,7 +126,7 @@ def main():
     rows=labelled_rows(args.prepared/'rows.parquet')
     if len(rows)!=9644:raise ValueError('All 9644 retained labels required')
     vectors=np.load(args.embeddings/'queries.npy',mmap_mode='r').reshape(-1,2,768)
-    vectors=np.asarray(vectors,dtype=np.float32);vectors/=np.maximum(np.linalg.norm(vectors,axis=2,keepdims=True),1e-12)
+    vectors=np.array(vectors,dtype=np.float32,copy=True);vectors/=np.maximum(np.linalg.norm(vectors,axis=2,keepdims=True),1e-12)
     cache=CandidateCache(args.candidates)
     deadline=datetime.fromisoformat(args.deadline);start=time.monotonic();completed_jobs=0
     for fold in (0,1,2,'final'):

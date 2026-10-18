@@ -78,3 +78,23 @@ def test_original_label_schema_is_adapted_without_changing_folds(tmp_path):
     result=labelled_rows(path)
     assert result.system.tolist()==original.coding_system.tolist()
     assert result.fold.tolist()==[0,2] and result.row.tolist()==[1,2]
+
+def test_hashed_deployment_memory_preserves_every_feature():
+    from genlink.deployment_memory import DeploymentMemory,text_digest,input_key
+    from genlink.rank_retrieval import chunk_key
+    rows=pd.DataFrame(dict(system=['ICD10CM']*3,code=['A01','B02','B02'],query_id=[0,1,2]))
+    queries=pd.DataFrame(dict(query_id=[0,1,2],term_norm=['pain','pain','other'],chunk_text=['one','two','three']))
+    vectors=np.zeros((3,2,768),dtype=np.float32);vectors[0,:,0]=1;vectors[1,:,0]=1;vectors[2,:,1]=1
+    details={('ICD10CM',c):{'tag':''} for c in ['A01','B02','C03']}
+    hashed=pd.DataFrame(dict(query_id=queries.query_id,term_sha256=queries.term_norm.map(text_digest),chunk_sha256=queries.chunk_text.map(lambda x:text_digest(chunk_key(x)))))
+    raw=TrainingMemory(rows,queries,vectors,'ICD10CM',details);safe=DeploymentMemory(rows,hashed,vectors,'ICD10CM',details)
+    a,fa=raw.search('pain','',vectors[0,0],vectors[0,1]);b,fb=safe.search('pain','',vectors[0,0],vectors[0,1])
+    assert a==b
+    for c in ['A01','B02','C03']:assert np.array_equal(fa(c),fb(c))
+    assert input_key('a','bc')!=input_key('ab','c')
+
+def test_official_entity_only_input_has_explicit_contextless_mode(tmp_path):
+    from genlink.input_adapter import input_rows
+    path=tmp_path/'entity.csv';path.write_text('chunk_id,clinical_entity\n0001,HTN\n')
+    rows,entity=input_rows(path,allow_contextless=True)
+    assert rows.chunk_id.tolist()==['0001'] and rows.chunk_text.tolist()==[''] and entity=='clinical_entity'

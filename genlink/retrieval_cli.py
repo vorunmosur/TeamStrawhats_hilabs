@@ -13,6 +13,7 @@ from .normalize import level1,context_window
 from .encode_retrieval import token_windows
 from .retrieval import HybridRetriever,ALL_FEATURES
 from .rank_retrieval import TrainingMemory,assemble,ordering,SYSTEMS
+from .deployment_memory import DeploymentMemory,input_key
 from .prepare_retrieval import file_sha,SAPBERT_MODEL,SAPBERT_REVISION
 
 class QueryEncoder:
@@ -32,17 +33,19 @@ class QueryEncoder:
     def encode(self,text):
         torch=self.torch;tokenizer=self.tokenizer
         tokens=tokenizer(text,add_special_tokens=False,truncation=False)['input_ids']
-        vectors=[]
+        windows=list(enumerate(token_windows(tokens)))
+        windows.sort(key=lambda pair:(len(pair[1]),pair[0]))
+        sums=np.zeros(self.model.config.hidden_size,dtype=np.float32)
         # Batch one matches the complete query encoding job; long inputs retain all tokens.
         with torch.inference_mode():
-            for window in token_windows(tokens):
+            for _,window in windows:
                 ids=torch.tensor([[tokenizer.cls_token_id]+window+[tokenizer.sep_token_id]],device=self.device)
                 vector=self.model(input_ids=ids,attention_mask=torch.ones_like(ids)).last_hidden_state[0,0].float().cpu().numpy()
-                vectors.append(vector)
-        vector=np.stack(vectors).sum(axis=0,dtype=np.float32)/len(vectors)
-        norm=np.linalg.norm(vector)
-        if not np.isfinite(vector).all() or norm==0:raise ValueError('Invalid query embedding')
-        return np.asarray(vector/norm,dtype=np.float32)
+                sums+=vector
+        means=sums[None,:]/np.asarray([[len(windows)]],dtype=np.int32)
+        norms=np.linalg.norm(means,axis=1,keepdims=True)
+        if not np.isfinite(means).all() or np.any(norms==0):raise ValueError('Invalid query embedding')
+        return np.asarray((means/norms)[0],dtype=np.float32)
 
 class MappingEngine:
     def __init__(self,root,device='auto',candidate_cache=None,force_reencode=False):
@@ -67,8 +70,10 @@ class MappingEngine:
         self.queries=pd.read_parquet(self.root/'prepared/queries.parquet')
         self.rows=labelled_rows(self.root/'prepared/rows.parquet')
         self.vectors=np.load(self.root/'embeddings/queries.npy',mmap_mode='r').reshape(-1,2,768)
-        self.known={(r.term_norm,r.context_norm):int(r.query_id) for r in self.queries.itertuples(index=False)}
-        self.memories={s:TrainingMemory(self.rows,self.queries,self.vectors,s,self.index.details) for s in SYSTEMS}
+        self.hashed_memory='context_key_sha256' in self.queries.columns
+        self.known={r.context_key_sha256:int(r.query_id) for r in self.queries.itertuples(index=False)} if self.hashed_memory else {(r.term_norm,r.context_norm):int(r.query_id) for r in self.queries.itertuples(index=False)}
+        memory_class=DeploymentMemory if self.hashed_memory else TrainingMemory
+        self.memories={s:memory_class(self.rows,self.queries,self.vectors,s,self.index.details) for s in SYSTEMS}
         self.models={}
         for s in SYSTEMS:
             path=self.root/f'models/{s}_final_ranker.joblib'
@@ -81,7 +86,7 @@ class MappingEngine:
     def predict(self,entity,chunk):
         term=level1(entity);context=context_window(entity,chunk);key=(term,context)
         if key in self.output_cache:return self.output_cache[key]
-        query_id=self.known.get(key)
+        query_id=self.known.get(input_key(term,context) if self.hashed_memory else key)
         query=pd.Series(dict(term_norm=term,context_norm=context))
         if query_id is None or self.force_reencode:
             if self.encoder is None:self.encoder=QueryEncoder(self.root/'encoder',self.device)
@@ -111,12 +116,13 @@ def main():
     parser.add_argument('--input',type=Path,required=True)
     parser.add_argument('--output',type=Path,required=True)
     parser.add_argument('--chunks',type=Path)
+    parser.add_argument('--contextless',action='store_true',help='Explicitly map entity-only input when chart context is unavailable')
     parser.add_argument('--device',choices=['auto','cpu','cuda'],default='auto')
     parser.add_argument('--candidate-cache',type=Path,help=argparse.SUPPRESS)
     parser.add_argument('--reencode',action='store_true',help='Independently encode every input instead of reusing frozen known-query vectors')
     parser.add_argument('--deadline',help=argparse.SUPPRESS)
     parser.add_argument('--usable-seconds',type=float,default=3600,help=argparse.SUPPRESS)
-    args=parser.parse_args();rows,entity=input_rows(args.input,args.chunks)
+    args=parser.parse_args();rows,entity=input_rows(args.input,args.chunks,args.contextless)
     if args.output.exists():raise ValueError('Choose a new output file')
     args.output.parent.mkdir(parents=True,exist_ok=True)
     engine=MappingEngine(args.artifacts,args.device,args.candidate_cache,args.reencode)

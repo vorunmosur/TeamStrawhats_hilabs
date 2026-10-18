@@ -9,3 +9,4 @@ pyarrow==23.0.1
 huggingface-hub==1.29.0
 safetensors==0.8.0
 joblib>=1.4,<2
+openpyxl==3.1.5

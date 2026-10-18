@@ -1,10 +1,12 @@
 """Validated CSV input contract, preserving identifiers and explicit context."""
-def input_rows(path, chunks=None):
+def input_rows(path, chunks=None, allow_contextless=False):
     import pandas as pd
     rows=pd.read_csv(path,dtype=str,keep_default_na=False)
     entity='entity' if 'entity' in rows.columns else 'clinical_entity'
     if entity not in rows.columns:
         raise ValueError('Input needs entity or clinical_entity')
+    if 'chunk_text' not in rows.columns and allow_contextless and chunks is None:
+        rows['chunk_text']=''
     if 'chunk_text' not in rows.columns:
         if chunks is None or 'chunk_id' not in rows.columns:
             raise ValueError('Provide chunk_text, or chunk_id with --chunks; use explicit empty chunk_text for contextless input')
